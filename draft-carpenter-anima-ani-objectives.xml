@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This is built from a template for a generic Internet Draft. Suggestions for
+     improvement welcome - write to Brian Carpenter, brian.e.carpenter @ gmail.com 
+     This can be converted using the Web service at https://xml2rfc.tools.ietf.org/ -->
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc toc="yes"?>
+<!-- You want a table of contents -->
+<?rfc symrefs="yes"?>
+<!-- Use symbolic labels for references -->
+<?rfc sortrefs="yes"?>
+<!-- This sorts the references -->
+<?rfc iprnotified="no" ?>
+<!-- Change to "yes" if someone has disclosed IPR for the draft -->
+<?rfc compact="yes"?>
+<!-- This defines the specific filename and version number of your draft (and inserts the appropriate IETF boilerplate -->
+<rfc category="info" docName="draft-carpenter-anima-ani-objectives-01" ipr="trust200902">
+  <front>
+    <title abbrev="ANI GRASP Objectives">Technical Objectives for the Autonomic Network Infrastructure</title>
+
+    <author fullname="Brian Carpenter" initials="B. E." surname="Carpenter">
+      <organization abbrev="Univ. of Auckland"/>
+      <address>
+        <postal>
+          <street>Department of Computer Science</street>
+          <street>University of Auckland</street>
+          <street>PB 92019</street>
+          <city>Auckland</city>
+          <region/>
+          <code>1142</code>
+          <country>New Zealand</country>
+        </postal>
+        <email>brian.e.carpenter@gmail.com</email>
+      </address>
+    </author>
+    
+    <author fullname="Bing Liu" initials="B." surname="Liu">
+      <organization>Huawei Technologies Co., Ltd</organization>
+      <address>
+        <postal>
+          <street>Q14, Huawei Campus</street>
+          <street>No.156 Beiqing Road</street>
+          <city>Hai-Dian District, Beijing</city>
+          <code>100095</code>
+          <country>P.R. China</country>
+        </postal>
+        <email>leo.liubing@huawei.com</email>
+      </address>
+    </author>
+
+ 
+
+    <date day="20" month="November" year="2016"/>
+
+    <abstract>
+      <t>This document defines several technical objectives for the
+      Generic Autonomic Signaling Protocol (GRASP) for use by components
+      of the Autonomic Networking Infrastructure outlined in the ANIMA reference model.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="intro" title="Introduction">
+      <t>
+      This document defines several technical objectives for use with for the
+      Generic Autonomic Signaling Protocol (GRASP) <xref target="I-D.ietf-anima-grasp"/>.
+      They are intended for use by corresponding Autonomic Service Agents
+     (ASAs) that realise infrastructure components of the Autonomic Network
+     Infrastructure (ANI) outlined in the ANIMA reference model <xref target="I-D.ietf-anima-reference-model"/>.
+     Also other early use cases are in scope.
+     </t>
+     
+    <t>Note: This draft is posted to allow systematic discussion of the various objectives in a
+     consistent way. It is quite probable that rather
+     than this being published as an RFC, the various objective definitions will be incorporated directly in the
+     relevant specifications. </t> 
+            
+    <t>The reference model identifies several infrastructure components that will fit together
+    to form the ANI, and early use cases for ANIMA are also considered:</t>
+    <t><list>
+    <t>Secure Bootstrap.</t>
+    <t>Autonomic Control Plane (ACP).</t>
+    <t>Stable Connectivity of Network OAM.</t>
+    <t>Intent Distribution.</t>
+    <t>Prefix Management</t>
+    </list></t>
+    
+    <t>The following sections define GRASP objectives for each of these cases. They are
+    described an informal object notation and formally using CBOR data definition language (CDDL)
+    <xref target="I-D.greevenbosch-appsawg-cbor-cddl"/>.
+    Undefined CDDL terms are defined in <xref target="I-D.ietf-anima-grasp"/>.</t>
+     
+
+
+    </section>
+
+    <section title="Objectives for Secure Bootstrap">
+    <t>Three components are involved in the Bootstrapping Remote Secure Key Infrastructures (BRSKI) process
+    described in <xref target="I-D.ietf-anima-bootstrapping-keyinfra"/>: the Registrar, the Join Assistant (or Proxy),
+    and the Joining Node (or Pledge). The proxy and the pledge are attached to the same link-layer and use
+    link-local communications only, to minimize exposure to eavesdroppers and malicious nodes. There may be
+    multiple hops between the proxy and the registrar. Therefore, two different GRASP objectives are
+    required: one that is used over an existing secure network between the registrar and the proxy,
+    and another that is used over an insecure link-local hop between the proxy and the pledge.
+    The security aspects and the corresponding limited instances of GRASP
+    are discussed in <xref target="I-D.ietf-anima-bootstrapping-keyinfra"/>
+    and <xref target="I-D.ietf-anima-grasp"/>.</t>
+    
+    <t>Note that since secure bootstrap takes place, by definition, on an incompletely secure
+    network, the use of any protocol needs to be kept as simple and limited as possible.
+    Therefore, only one GRASP message type is used - flooding - to avoid giving away any
+    unnecessary information by any node involved.</t>
+    
+    <t>A registrar announces itself to potential proxies by use of the "AN_registrar" objective.
+    This is a synchronization objective primarily intended to be flooded throughout the network using the
+    GRASP Flood Synchronization (M_FLOOD) message. In accordance with the design of the Flood message,
+    a locator consisting of a specific IP address, IP protocol number and port number will be distributed
+    with the flooded objective. An example of the objective is informally:</t>
+    <t>
+    ["AN_registrar", F_SYNCH, loop_count, [7, "BRSKI-TLS"]]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    registrar-objective = ["AN_registrar", F_SYNCH, loop-count, [radius, method]]
+    <vspace blankLines="0"/>
+    radius = uint ; loop-count at the source node
+    <vspace blankLines="0"/>
+    method = text ; name of the BRSKI method supported
+    </t>
+    <t>
+    The 'radius' parameter allows a proxy that receives this message to determine its distance in hops
+    from the registrar, by subtracting the received 'loop-count' from 'radius'.
+    </t>
+    <t>The 'method' parameter indicates the specific BRSKI method available at the given locator. The initial possible values
+    are "BRSKI-TLS" and "BRSKI-COAP". A registrar that supports more than one method will flood multiple versions
+    of the "AN_registrar" objective.</t>
+    
+    <section title="Flooding Alternative for Proxy">
+    
+    <t>A proxy announces itself to potential pledges by use of the "AN_proxy" objective.
+    This is a synchronization objective primarily intended to be flooded on a single link using the
+    GRASP Flood Synchronization (M_FLOOD) message. In accordance with the design of the Flood message,
+    a locator consisting of a specific link-local IP address, IP protocol number and port number will be distributed
+    with the flooded objective. An example of the objective is informally:
+    </t><t>
+    ["AN_proxy", F_SYNCH, 1, "BRSKI-TLS"]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    proxy-objective = ["AN_proxy", F_SYNCH, 1, method]
+    <vspace blankLines="0"/>
+    method = text ; name of the BRSKI method supported
+    </t>
+    
+    <t>
+    The loop-count is fixed at 1 since this is a link-local operation.
+    </t>
+    <t>The 'method' parameter indicates the specific BRSKI method available at the given locator. The initial possible values
+    are "BRSKI-TLS" and "BRSKI-COAP". A proxy that supports more than one method will flood multiple versions
+    of the "AN_proxy" objective.</t>
+    
+    </section>
+    
+    <section title="Negotiation Alternative for Proxy">
+    <t>This alternative to "AN_proxy" uses additional features of GRASP.
+    It requires additional complexity in the pledge, and requires the pledge to announce its existence
+    to any on-link eavesdroppers via a Discovery message. It is therefore not recommended on security
+    grounds, but is defined here for completeness.</t>
+    <t>A pledge discovers a local proxy and negotiates a BRSKI method with it by use of the "AN_join" objective.
+    First, the pledge performs GRASP discovery, with the loop-count set to 1 and limited to
+    link-local addresses. If multiple responses occur, it chooses one by an 
+    implementation-defined method. Then the pledge initiates GRASP negotiation to choose a mutually
+    acceptable BRSKI method.</t><t>
+    An example of the objective is informally:
+    </t><t>
+    ["AN_join", F_NEG, 6, ["BRSKI-COAP","BRSKI-TLS"]]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    join-objective = ["AN_join", F_NEG, loop-count, [*method]]
+    <vspace blankLines="0"/>
+    method = text ; name of the BRSKI method supported
+    </t>
+    <t>The parties will negotiate until one side proposes a single BRSKI method and the other side accepts. In the simplest
+    case of immediate acceptance, there will only be two messages (Request Negotiate and End Negotiate).    
+    The locator (IP address, IP protocol number, port number) used for the negotiation
+    will be available for the subsequent BRSKI operations, if required.</t>
+    <t>Note that in the Discovery message, the loop count will be set to 1 to limit discovery
+    to the local link. In the negotiation stage, the loop count will serve its normal
+    purpose (limiting the negotiation to 6 steps in the above example).</t>
+    </section>
+    
+    </section>
+    
+    <section title="Objective for Autonomic Control Plane">
+    <t>The Autonomic Control Plane (ACP) <xref target="I-D.ietf-anima-autonomic-control-plane"/>
+    constructs itself without outside intervention. To achieve this, each node needs to identify its
+    link-local neighbors on all interfaces, and agree on a secure connection method with each of them.
+    There are at least two possible approaches for this: a flooding mechanism, in which each node
+    announces itself and it security methods to its neighbors, or a discovery and negotiation mechanism,
+    in which each node actively discovers its neighbors. For the moment this draft describes both methods. </t>
+    
+    <t>For either method, each node runs an ASA that supports the corresponding objective. This ASA runs
+    permanently, in order to discover or detect new ACP neighbors or to remove failed neighbors.</t>
+    
+    <section title="Flooding Alternative">
+    
+     <t>A node announces itself to potential ACP peers by use of the "AN_ACP" objective.
+    This is a synchronization objective primarily intended to be flooded on a single link using the
+    GRASP Flood Synchronization (M_FLOOD) message. In accordance with the design of the Flood message,
+    a locator consisting of a specific link-local IP address, IP protocol number and port number will be distributed
+    with the flooded objective. An example of the objective is informally:
+    </t><t>
+    ["AN_ACP", F_SYNCH, 1, "IKEv2"]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    acp-objective = ["AN_ACP", F_SYNCH, 1, method]
+    <vspace blankLines="0"/>
+    method = text ; name of the connection method supported
+    </t>
+    
+    <t>
+    The loop-count is fixed at 1 since this is a link-local operation.
+    </t>
+    <t>The 'method' parameter indicates the specific connection method available at the given locator. The initial possible values
+    are "IKEv2" and "TLS". A node that supports more than one method will flood multiple versions
+    of the "AN_ACP" objective.</t>
+    
+    <t>Note that a node serving both as an ACP node and BRSKI proxy may choose to distribute the "AN_ACP" objectives
+    and "AN_proxy" objectives in the same message, since GRASP allows multiple objectives in one Flood message.</t>
+    
+    </section>
+    
+    <section title="Negotiation Alternative">
+    
+    <t>Each node discovers its neighbours and negotiates a connection method with each one by use of the "AN_ACP" objective.
+    First, the node performs GRASP discovery, with the loop-count set to 1 and limited to
+    link-local addresses. It records each response that it receives within the chosen discovery timeout.
+    Then the pledge initiates GRASP negotiation with each newly discovered peer in turn to choose a mutually
+    acceptable connection method.</t><t>
+    An example of the objective is informally:
+    </t><t>
+    ["AN_ACP", F_NEG, 6, ["IKEv2","TLS"]]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    acp-objective = ["AN_ACP", F_NEG, loop-count, [*method]]
+    <vspace blankLines="0"/>
+    method = text ; name of the connection method supported
+    </t>
+    <t>The parties will negotiate until one side proposes a single connection method and the other side accepts. In the simplest
+    case of immediate acceptance, there will only be two messages (Request Negotiate and End Negotiate).    
+    The locator (IP address, IP protocol number, port number) used for the negotiation
+    will be available for the subsequent operations, if required.</t>
+    <t>Note that in the Discovery message, the loop count will be set to 1 to limit discovery
+    to the local link. In the negotiation stage, the loop count will serve its normal
+    purpose (limiting the negotiation to 6 steps in the above example).</t>
+    </section>
+    </section>
+    
+    <section title="Objective for Stable Connectivity of Network OAM">
+    <t>For OAM purposes <xref target="I-D.ietf-anima-stable-connectivity"/>,
+    a special-purpose ASA, which we will call the NOC ASA, mediates connectivity
+    between NOC systems performing OAM operations and autonomic nodes that can be
+    reached securely via the ACP. This is requires s discovery operation, which could
+    be handled in two ways: the NOC ASA discovers all nodes, or each node discovers the NOC ASA.
+    The latter seems much more practical. However, the NOC will need to know something
+    about each target node, so the corresponding objective is defined as a negotiation
+    objective to allow for this.</t>
+    <t>
+    An example of the objective is informally:
+    </t><t>
+    ["AN_NOC", F_NEG, 6, [TBD]]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    noc-objective = ["AN_NOC", F_NEG, loop-count, [TBD]]
+    <vspace blankLines="0"/>
+    TBD = any ; node information to be defined
+    </t>
+    <t>When a node joins the ACP, one of its initial actions must be to perform GRASP discovery for "AN_NOC"
+    and then to send a Request Negotiate message to the NOC ASA supplying TBD. If successfully received,
+    the NOC ASA must rely with an End Negotiate message. From then on, any OAM communication between the
+    NOC and the node in question will proceed over the ACP using the information TBD.</t>
+    </section>
+    
+    <section title="Objectives for Intent Distribution">
+    <t>The format and semantics of Intent are not yet defined, although some
+    aspects are discussed in <xref target="I-D.du-anima-an-intent"/>.
+    Here we assume that Intent is supplied to the whole network as a single
+    file and that the file is obtained by each node that needs it via a
+    specific Uniform Resource Identifier, typically a URL. We also assume that
+    Intent, within a given autonomic domain, is qualified by a monotonically
+    increasing version number, so that nodes can determine if their current
+    copy of Intent is out of date. (A timestamp is not used for this purpose,
+    since it would depend on all nodes having consistent clocks.)</t>
+    
+    <t>Thus, a source of Intent announces itself to all nodes by use of the "AN_intent" objective.
+    This is a synchronization objective primarily intended to be flooded using the
+    GRASP Flood Synchronization (M_FLOOD) message. An example of the objective is informally:
+    </t><t>
+    ["AN_intent", F_SYNCH, loop_count, [12345, "https://noc.example.com/Intent/"]
+    </t><t>
+    The formal CDDL definition is
+    </t><t>
+    intent-objective = ["AN_Intent", F_SYNCH, loop-count, [version-number,uri]]
+    <vspace blankLines="0"/>
+    version-number = uint
+    <vspace blankLines="0"/>
+    uri = text             ; URI conforming to RFC 3986
+    </t>
+    <t>A node that needs to obtain or update Intent will use the latest received
+    version of this objective to check if the version number has increased, and will
+    use the given URI to obtain the current Intent if necessary.</t>
+    </section>
+    
+    <section title="Objective for Prefix Management">
+    <t>TBD</t>
+    </section>
+  
+    <section title="Flood Frequency">
+    <t>Any ASA that floods one of the above objectives should do so at a carefully
+    chosen frequency. Recipient nodes may be starting up, reconnecting, or waking up from sleep,
+    so floods need to be refreshed periodically. On the other hand, excessive flooding will
+    consume bandwidth, CPU and battery capacity throughout the network, and might even
+    resemble a DoS attack. A general guideline is to flood an objective once immediately
+    after its value is initialised or changed, and then repeat the flood at intervals
+    of at least 30 seconds. Additionally, the flooding interval should be slightly
+    jittered to avoid synchronicity with other floods. Finally, the value of a flooded objective
+    should change as rarely as possible (on a timescale of at least minutes, not seconds).</t>
+    </section>
+    
+
+    <section anchor="security" title="Security Considerations">
+      <t>General security issues for GRASP are covered in <xref target="I-D.ietf-anima-grasp"/>. Specific
+      issues that are not mentioned above are discussed in the referenced drafts for BRSKI, ACP,
+      stable connectivity and Intent.
+      </t>
+    </section>
+
+    <section anchor="iana" title="IANA Considerations">
+      <t>IANA is requested to add the following entries to the GRASP Objective Names Table
+      registry created by <xref target="I-D.ietf-anima-grasp"/>:
+      <vspace blankLines="0"/>
+      AN_registrar
+      <vspace blankLines="0"/>
+      AN_proxy
+      <vspace blankLines="0"/>
+      AN_ACP
+      <vspace blankLines="0"/>
+      AN_NOC
+      <vspace blankLines="0"/>
+      AN_intent
+       </t>
+
+      <t/>
+    </section>
+
+    <section anchor="ack" title="Acknowledgements">
+      <t>TBD.</t>
+    </section>
+  </middle>
+  <back>
+     
+  
+    
+    <references title="Normative References">
+      
+      <?rfc include='reference.I-D.ietf-anima-grasp'?>
+      <?rfc include='reference.I-D.greevenbosch-appsawg-cbor-cddl'?>
+    </references>
+
+    <references title="Informative References">
+    
+      <?rfc include='reference.I-D.ietf-anima-autonomic-control-plane'?>
+      <?rfc include='reference.I-D.ietf-anima-reference-model'?>
+      <?rfc include='reference.I-D.ietf-anima-bootstrapping-keyinfra'?>
+      <?rfc include='reference.I-D.ietf-anima-stable-connectivity'?>
+      <?rfc include='reference.I-D.du-anima-an-intent'?> 
+      
+    </references>
+    
+  <section anchor="changes" title="Change log [RFC Editor: Please remove]">
+    <t>draft-carpenter-anima-ani-objectives-01, 2018-11-xx:
+      <vspace blankLines="1"/>
+       Initial version</t>  
+    <t>draft-carpenter-anima-ani-objectives-00, 2018-11-15:
+      <vspace blankLines="1"/>
+       Initial version</t>  
+    </section>   
+  </back>
+</rfc>
