@@ -49,7 +49,7 @@
 
  
 
-    <date day="30" month="June" year="2017"/>
+    <date day="4" month="July" year="2017"/>
 
     <abstract>
       <t>This document defines the formats of several technical objectives for the
@@ -202,6 +202,8 @@
     <t>[O_IPv6_LOCATOR, ipv6-address, IPPROTO_UDP, port]</t>
     <t>By this mechanism, a proxy may announce one or more connection methods to all pledges,
     each with an associated link-local address, protocol number and port number.</t>
+    <t>This objective is only to be used in a Discovery Unsolicited
+    Link-Local (DULL) instance of GRASP <xref target="I-D.ietf-anima-grasp"/>.</t>
     </section>
     
     
@@ -225,7 +227,7 @@
     a locator consisting of a specific link-local IP address, IP protocol number and port number
     will be distributed with the flooded objective. An example of the objective is informally:
     </t><t>
-    ["AN_ACP", SYNCH-FLAG, 1, ["IKEv2","TLS"]
+    ["AN_ACP", SYNCH-FLAG, 1, ["IKEv2","dTLS"]
     </t><t>
     The formal CDDL definition is:
     </t><figure>
@@ -241,8 +243,10 @@
     <t>The objective-flags field is set to indicate synchronization.</t>
     <t>The loop-count is fixed at 1 since this is a link-local operation.</t>
     <t>The 'method' parameter indicates the specific connection method available at the given locator. The initial possible values
-    are "IKEv2", "GRE-IKEv2", "TLS" and "dTLS". A node that supports more than one method may flood multiple versions
+    are "IKEv2" and "dTLS". A node that supports more than one method may flood multiple versions
     of the "AN_ACP" objective, each accompanied by its own locator.</t>
+    <t>This objective is only to be used in a Discovery Unsolicited
+    Link-Local (DULL) instance of GRASP <xref target="I-D.ietf-anima-grasp"/>.</t>
     
     <t>Note that a node serving both as an ACP node and BRSKI Join Proxy may choose to distribute the "AN_ACP" objective
     and "AN_join_proxy" objective in the same flood message, since GRASP allows multiple objectives in one Flood message.</t>
@@ -279,8 +283,10 @@
     <t>The loop-count is set to a suitable value to limit the scope of discovery. A suggested default value is 6.</t>
     <t>When a node joins the ACP, one of its initial actions must be to perform GRASP discovery for "AN_NOC"
     and then to send a Request Negotiate message to the NOC ASA supplying the value TBD. If successfully received,
-    the NOC ASA must reply with an End Negotiate message. From then on, any OAM communication between the
-    NOC and the node in question will proceed over the ACP using the information TBD.</t>
+    the NOC ASA should reply with a Negotiate message, providing a value TBD in return. This value will inform
+    the requesting node of various NOC parameters. The requesting node must then send
+    an End Negotiate message. From then on, any OAM communication between 
+    NOC services and the node in question will proceed over the ACP using the information TBD.</t>
     </section>
     
   
@@ -348,6 +354,11 @@
     </references>
     
   <section anchor="changes" title="Change log [RFC Editor: Please remove]">
+  
+      <t>draft-carpenter-anima-ani-objectives-03, 2017-06-30:
+      <vspace blankLines="1"/>
+      Align with latest BRSKI and ACP drafts.
+      </t>
       <t>draft-carpenter-anima-ani-objectives-02, 2017-06-30:
       <vspace blankLines="1"/>
        Limited scope to initial ANI components
